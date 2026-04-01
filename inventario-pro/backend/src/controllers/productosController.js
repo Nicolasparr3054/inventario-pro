@@ -1,0 +1,105 @@
+const { pool } = require('../config/database');
+
+exports.getAll = async (req, res) => {
+  try {
+    const { search = '', categoria_id, activo = 1 } = req.query;
+    let q = `SELECT p.*, c.nombre AS categoria_nombre, c.color AS categoria_color,
+                    pr.nombre AS proveedor_nombre
+             FROM productos p
+             LEFT JOIN categorias c  ON p.categoria_id  = c.id
+             LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
+             WHERE p.activo = ?`;
+    const params = [activo];
+    if (search) { q += ' AND (p.nombre LIKE ? OR p.codigo LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+    if (categoria_id) { q += ' AND p.categoria_id = ?'; params.push(categoria_id); }
+    q += ' ORDER BY p.nombre';
+    const [rows] = await pool.query(q, params);
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.getOne = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT p.*, c.nombre AS categoria_nombre, pr.nombre AS proveedor_nombre
+       FROM productos p
+       LEFT JOIN categorias c  ON p.categoria_id  = c.id
+       LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
+       WHERE p.id = ?`, [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
+    res.json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.create = async (req, res) => {
+  const { codigo, nombre, descripcion, categoria_id, proveedor_id,
+          precio_compra, precio_venta, stock, stock_minimo, imagen_url } = req.body;
+  if (!codigo || !nombre) return res.status(400).json({ error: 'Código y nombre requeridos' });
+  try {
+    const [r] = await pool.query(
+      `INSERT INTO productos (codigo,nombre,descripcion,categoria_id,proveedor_id,
+         precio_compra,precio_venta,stock,stock_minimo,imagen_url)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [codigo, nombre, descripcion, categoria_id||null, proveedor_id||null,
+       precio_compra||0, precio_venta||0, stock||0, stock_minimo||5, imagen_url||null]
+    );
+    if (stock > 0) {
+      await pool.query(
+        `INSERT INTO movimientos_inventario (producto_id,tipo,cantidad,stock_anterior,stock_nuevo,motivo)
+         VALUES (?,?,?,?,?,?)`,
+        [r.insertId, 'entrada', stock||0, 0, stock||0, 'Stock inicial']
+      );
+    }
+    res.status(201).json({ id: r.insertId, message: 'Producto creado' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Código duplicado' });
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.update = async (req, res) => {
+  const { nombre, descripcion, categoria_id, proveedor_id,
+          precio_compra, precio_venta, stock_minimo, imagen_url, activo } = req.body;
+  try {
+    await pool.query(
+      `UPDATE productos SET nombre=?,descripcion=?,categoria_id=?,proveedor_id=?,
+         precio_compra=?,precio_venta=?,stock_minimo=?,imagen_url=?,activo=?
+       WHERE id=?`,
+      [nombre, descripcion, categoria_id||null, proveedor_id||null,
+       precio_compra, precio_venta, stock_minimo, imagen_url||null, activo ?? 1, req.params.id]
+    );
+    res.json({ message: 'Producto actualizado' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.ajustarStock = async (req, res) => {
+  const { cantidad, motivo } = req.body;
+  const id = req.params.id;
+  try {
+    const [rows] = await pool.query('SELECT stock FROM productos WHERE id=?', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
+    const stockAnt  = rows[0].stock;
+    const stockNuevo = stockAnt + parseInt(cantidad);
+    if (stockNuevo < 0) return res.status(400).json({ error: 'Stock no puede ser negativo' });
+    await pool.query('UPDATE productos SET stock=? WHERE id=?', [stockNuevo, id]);
+    await pool.query(
+      `INSERT INTO movimientos_inventario (producto_id,tipo,cantidad,stock_anterior,stock_nuevo,motivo)
+       VALUES (?,?,?,?,?,?)`,
+      [id, cantidad>0?'entrada':'salida', Math.abs(cantidad), stockAnt, stockNuevo, motivo||'Ajuste manual']
+    );
+    res.json({ message: 'Stock ajustado', stock_nuevo: stockNuevo });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.getLowStock = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT p.*, c.nombre AS categoria_nombre
+       FROM productos p LEFT JOIN categorias c ON p.categoria_id=c.id
+       WHERE p.stock <= p.stock_minimo AND p.activo=1
+       ORDER BY (p.stock - p.stock_minimo) ASC`
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
