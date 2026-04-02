@@ -124,7 +124,7 @@ inventario-pro/
 ├── database.sql              ← Script completo MySQL
 ├── start.bat                 ← Inicio automático Windows
 ├── start.sh                  ← Inicio automático Mac/Linux
-└── README.md
+└── README.md                 ← Documentación del proyecto
 ```
 
 ---
