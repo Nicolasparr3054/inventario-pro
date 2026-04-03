@@ -1,23 +1,25 @@
 import { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import api from '../utils/api';
-import { fmt, fmtNum, fmtDate } from '../utils/format';
+import { fmt, fmtNum } from '../utils/format';
 import toast from 'react-hot-toast';
 
-const empty = { codigo:'', nombre:'', descripcion:'', categoria_id:'', proveedor_id:'', precio_compra:'', precio_venta:'', stock:'', stock_minimo:5, imagen_url:'' };
+const empty = { codigo:'', nombre:'', descripcion:'', categoria_id:'', proveedor_id:'',
+                precio_compra:'', precio_venta:'', stock:'', stock_minimo:5, imagen_url:'' };
 
 export default function Productos() {
-  const [productos, setProductos]   = useState([]);
-  const [categorias, setCategorias] = useState([]);
+  const [productos, setProductos]     = useState([]);
+  const [categorias, setCategorias]   = useState([]);
   const [proveedores, setProveedores] = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState('');
-  const [catFilter, setCatFilter]   = useState('');
-  const [modal, setModal]           = useState(false);
-  const [form, setForm]             = useState(empty);
-  const [editId, setEditId]         = useState(null);
-  const [stockModal, setStockModal] = useState(null);
-  const [ajuste, setAjuste]         = useState({ cantidad:'', motivo:'' });
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState('');
+  const [catFilter, setCatFilter]     = useState('');
+  const [modal, setModal]             = useState(false);
+  const [form, setForm]               = useState(empty);
+  const [editId, setEditId]           = useState(null);
+  const [stockModal, setStockModal]   = useState(null);
+  const [ajuste, setAjuste]           = useState({ cantidad:'', motivo:'' });
+  const [imgPreview, setImgPreview]   = useState(''); // V3: preview imagen
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,9 +36,14 @@ export default function Productos() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openNew   = () => { setForm(empty); setEditId(null); setModal(true); };
-  const openEdit  = p => { setForm({ ...p, categoria_id: p.categoria_id||'', proveedor_id: p.proveedor_id||'' }); setEditId(p.id); setModal(true); };
-  const closeModal = () => { setModal(false); setEditId(null); };
+  const openNew  = () => { setForm(empty); setEditId(null); setImgPreview(''); setModal(true); };
+  const openEdit = p => {
+    setForm({ ...p, categoria_id: p.categoria_id||'', proveedor_id: p.proveedor_id||'' });
+    setEditId(p.id);
+    setImgPreview(p.imagen_url||'');
+    setModal(true);
+  };
+  const closeModal = () => { setModal(false); setEditId(null); setImgPreview(''); };
 
   const save = async e => {
     e.preventDefault();
@@ -61,7 +68,24 @@ export default function Productos() {
     } catch (err) { toast.error(err.response?.data?.error || 'Error'); }
   };
 
-  const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
+  const f = k => e => {
+    const val = e.target.value;
+    setForm(p=>({...p,[k]:val}));
+    if (k === 'imagen_url') setImgPreview(val);
+  };
+
+  // V3: cargar imagen desde archivo local (convierte a base64)
+  const handleImageFile = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 500000) return toast.error('La imagen no debe superar 500KB');
+    const reader = new FileReader();
+    reader.onload = ev => {
+      setForm(p=>({...p, imagen_url: ev.target.result}));
+      setImgPreview(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
     <Layout title="Productos">
@@ -82,10 +106,17 @@ export default function Productos() {
         </div>
         {loading ? <div className="spinner"/> : (
           <table>
-            <thead><tr><th>Código</th><th>Producto</th><th>Categoría</th><th>Compra</th><th>Venta</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Img</th><th>Código</th><th>Producto</th><th>Categoría</th><th>Compra</th><th>Venta</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
               {productos.length ? productos.map(p=>(
                 <tr key={p.id}>
+                  {/* V3: miniatura de imagen */}
+                  <td style={{width:44,padding:'8px 12px'}}>
+                    {p.imagen_url
+                      ? <img src={p.imagen_url} alt={p.nombre} style={{width:36,height:36,objectFit:'cover',borderRadius:6,border:'0.5px solid var(--border)'}}/>
+                      : <div style={{width:36,height:36,borderRadius:6,background:'var(--bg-page)',border:'0.5px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>📦</div>
+                    }
+                  </td>
                   <td><span className="mono" style={{fontSize:12,color:'var(--text3)'}}>{p.codigo}</span></td>
                   <td>
                     <strong style={{display:'block'}}>{p.nombre}</strong>
@@ -112,7 +143,7 @@ export default function Productos() {
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={8}><div className="empty-state">No se encontraron productos</div></td></tr>
+                <tr><td colSpan={9}><div className="empty-state">No se encontraron productos</div></td></tr>
               )}
             </tbody>
           </table>
@@ -122,7 +153,7 @@ export default function Productos() {
       {/* Modal producto */}
       {modal && (
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&closeModal()}>
-          <div className="modal">
+          <div className="modal" style={{maxWidth:560}}>
             <div className="modal-header">
               <h3>{editId ? 'Editar producto' : 'Nuevo producto'}</h3>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={closeModal}>✕</button>
@@ -132,7 +163,7 @@ export default function Productos() {
                 <div className="form-grid">
                   <div className="input-group"><label>Código *</label><input className="input" value={form.codigo} onChange={f('codigo')} required disabled={!!editId}/></div>
                   <div className="input-group"><label>Nombre *</label><input className="input" value={form.nombre} onChange={f('nombre')} required/></div>
-                  <div className="input-group span2"><label>Descripción</label><input className="input" value={form.descripcion} onChange={f('descripcion')}/></div>
+                  <div className="input-group full"><label>Descripción</label><input className="input" value={form.descripcion} onChange={f('descripcion')}/></div>
                   <div className="input-group"><label>Categoría</label>
                     <select className="input" value={form.categoria_id} onChange={f('categoria_id')}>
                       <option value="">Sin categoría</option>
@@ -158,6 +189,24 @@ export default function Productos() {
                       </select>
                     </div>
                   )}
+
+                  {/* V3: imagen */}
+                  <div className="input-group full">
+                    <label>Imagen del producto</label>
+                    <div style={{display:'flex',gap:12,alignItems:'flex-start'}}>
+                      <div style={{flex:1,display:'flex',flexDirection:'column',gap:6}}>
+                        <input className="input" value={form.imagen_url||''} onChange={f('imagen_url')} placeholder="URL de imagen (https://...)"/>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <span style={{fontSize:11,color:'var(--text3)'}}>o subir archivo</span>
+                          <input type="file" accept="image/*" onChange={handleImageFile} style={{fontSize:11,color:'var(--text2)'}}/>
+                        </div>
+                      </div>
+                      {imgPreview && (
+                        <img src={imgPreview} alt="preview" style={{width:64,height:64,objectFit:'cover',borderRadius:8,border:'0.5px solid var(--border)',flexShrink:0}}
+                          onError={()=>setImgPreview('')}/>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -178,9 +227,11 @@ export default function Productos() {
               <button className="btn btn-ghost btn-icon btn-sm" onClick={()=>setStockModal(null)}>✕</button>
             </div>
             <div className="modal-body">
-              <p style={{color:'var(--text2)',fontSize:13}}><strong>{stockModal.nombre}</strong> — Stock actual: <span className="mono">{fmtNum(stockModal.stock)}</span></p>
-              <div className="input-group">
-                <label>Cantidad (positivo=entrada, negativo=salida)</label>
+              <p style={{color:'var(--text2)',fontSize:13,marginBottom:14}}>
+                <strong>{stockModal.nombre}</strong> — Stock actual: <span className="mono">{fmtNum(stockModal.stock)}</span>
+              </p>
+              <div className="input-group" style={{marginBottom:10}}>
+                <label>Cantidad (positivo = entrada, negativo = salida)</label>
                 <input className="input" type="number" value={ajuste.cantidad} onChange={e=>setAjuste(p=>({...p,cantidad:e.target.value}))} placeholder="Ej: 10 o -5"/>
               </div>
               <div className="input-group">

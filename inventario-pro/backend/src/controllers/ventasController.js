@@ -12,14 +12,13 @@ exports.getAll = async (req, res) => {
     let q = `SELECT v.*, c.nombre AS cliente_nombre, u.nombre AS vendedor_nombre,
                (SELECT COUNT(*) FROM venta_detalles WHERE venta_id=v.id) AS total_items
              FROM ventas v
-             LEFT JOIN clientes c  ON v.cliente_id  = c.id
-             LEFT JOIN usuarios u  ON v.usuario_id  = u.id
+             LEFT JOIN clientes c ON v.cliente_id = c.id
+             LEFT JOIN usuarios u ON v.usuario_id = u.id
              WHERE 1=1`;
     const p = [];
     if (desde)  { q+=' AND DATE(v.creado_en)>=?'; p.push(desde); }
     if (hasta)  { q+=' AND DATE(v.creado_en)<=?'; p.push(hasta); }
     if (estado) { q+=' AND v.estado=?'; p.push(estado); }
-    // Cajeros solo ven sus propias ventas
     if (req.user?.rol === 'cajero') { q+=' AND v.usuario_id=?'; p.push(req.user.id); }
     q += ' ORDER BY v.creado_en DESC LIMIT 200';
     const [rows] = await pool.query(q, p);
@@ -70,8 +69,7 @@ exports.create = async (req, res) => {
     const venta_id = r.insertId;
     for (const item of items) {
       await conn.query(
-        `INSERT INTO venta_detalles (venta_id,producto_id,cantidad,precio_unit,subtotal)
-         VALUES (?,?,?,?,?)`,
+        `INSERT INTO venta_detalles (venta_id,producto_id,cantidad,precio_unit,subtotal) VALUES (?,?,?,?,?)`,
         [venta_id, item.producto_id, item.cantidad, item.precio_unit, item.precio_unit*item.cantidad]
       );
     }
@@ -80,7 +78,26 @@ exports.create = async (req, res) => {
   } catch (err) {
     await conn.rollback();
     res.status(400).json({ error: err.message });
-  } finally {
-    conn.release();
-  }
+  } finally { conn.release(); }
+};
+
+// V3: datos completos para imprimir recibo
+exports.getRecibo = async (req, res) => {
+  try {
+    const [[venta]] = await pool.query(
+      `SELECT v.*, c.nombre AS cliente_nombre, c.nit AS cliente_nit,
+              u.nombre AS vendedor_nombre
+       FROM ventas v
+       LEFT JOIN clientes c ON v.cliente_id = c.id
+       LEFT JOIN usuarios u ON v.usuario_id = u.id
+       WHERE v.id=?`, [req.params.id]
+    );
+    if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
+    const [detalles] = await pool.query(
+      `SELECT vd.*, p.nombre AS producto_nombre, p.codigo AS producto_codigo
+       FROM venta_detalles vd JOIN productos p ON vd.producto_id=p.id
+       WHERE vd.venta_id=?`, [req.params.id]
+    );
+    res.json({ ...venta, detalles, empresa: 'Inventario Pro' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 };

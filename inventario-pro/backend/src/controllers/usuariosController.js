@@ -29,10 +29,8 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   const { nombre, email, rol, activo, password } = req.body;
   const id = req.params.id;
-  // No permitir que el admin se desactive a sí mismo
-  if (Number(id) === req.user.id && activo === 0) {
+  if (Number(id) === req.user.id && activo === 0)
     return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta' });
-  }
   try {
     if (password) {
       const hash = await bcrypt.hash(password, 10);
@@ -52,12 +50,23 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   const id = req.params.id;
-  if (Number(id) === req.user.id) {
+  if (Number(id) === req.user.id)
     return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
-  }
   try {
-    // Soft delete
     await pool.query(`UPDATE usuarios SET activo=0 WHERE id=?`, [id]);
     res.json({ message: 'Usuario desactivado' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+// V3: historial de accesos
+exports.getAccesos = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT a.*, u.nombre AS usuario_nombre
+       FROM accesos_log a
+       LEFT JOIN usuarios u ON a.usuario_id = u.id
+       ORDER BY a.creado_en DESC LIMIT 100`
+    );
+    res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };

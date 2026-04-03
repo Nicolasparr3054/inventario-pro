@@ -7,21 +7,33 @@ import { fmtDateTime } from '../utils/format';
 const EMPTY = { nombre:'', email:'', password:'', rol:'cajero', activo:1 };
 
 export default function Usuarios() {
+  const [tab, setTab]           = useState('usuarios'); // 'usuarios' | 'accesos'
   const [usuarios, setUsuarios] = useState([]);
+  const [accesos, setAccesos]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modal, setModal]       = useState(false);
   const [editing, setEditing]   = useState(null);
   const [form, setForm]         = useState(EMPTY);
   const [saving, setSaving]     = useState(false);
 
-  const load = async () => {
+  const loadUsuarios = async () => {
     setLoading(true);
     try { const { data } = await api.get('/usuarios'); setUsuarios(data); }
     catch { toast.error('Error cargando usuarios'); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadAccesos = async () => {
+    setLoading(true);
+    try { const { data } = await api.get('/accesos'); setAccesos(data); }
+    catch { toast.error('Error cargando accesos'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    if (tab === 'usuarios') loadUsuarios();
+    else loadAccesos();
+  }, [tab]);
 
   const openNew  = () => { setEditing(null); setForm(EMPTY); setModal(true); };
   const openEdit = u  => { setEditing(u); setForm({ nombre:u.nombre, email:u.email, password:'', rol:u.rol, activo:u.activo }); setModal(true); };
@@ -39,7 +51,7 @@ export default function Usuarios() {
         toast.success('Usuario creado');
       }
       setModal(false);
-      load();
+      loadUsuarios();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Error guardando usuario');
     } finally { setSaving(false); }
@@ -50,47 +62,90 @@ export default function Usuarios() {
     try {
       await api.delete(`/usuarios/${u.id}`);
       toast.success('Usuario desactivado');
-      load();
+      loadUsuarios();
     } catch (err) { toast.error(err.response?.data?.error || 'Error'); }
   };
 
-  const rolBadge = r => ({ admin:'badge-purple', cajero:'badge-blue', vendedor:'badge-green', almacenista:'badge-yellow' }[r] || 'badge-gray');
+  const rolBadge  = r => ({ admin:'badge-purple', cajero:'badge-blue', vendedor:'badge-green', almacenista:'badge-yellow' }[r] || 'badge-gray');
+  const accionBadge = a => ({ login:'badge-green', logout:'badge-gray', login_fallido:'badge-red' }[a] || 'badge-gray');
 
   return (
     <Layout title="Usuarios">
-      <div className="table-wrapper">
-        <div className="table-header">
-          <span className="table-title">Gestión de Usuarios</span>
-          <button className="btn btn-primary" onClick={openNew}>+ Nuevo usuario</button>
-        </div>
-        {loading ? <div className="spinner"/> : (
-          <table>
-            <thead>
-              <tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Creado</th><th></th></tr>
-            </thead>
-            <tbody>
-              {usuarios.length ? usuarios.map(u=>(
-                <tr key={u.id}>
-                  <td style={{fontWeight:500}}>{u.nombre}</td>
-                  <td style={{color:'var(--text2)',fontSize:12}}>{u.email}</td>
-                  <td><span className={`badge ${rolBadge(u.rol)}`}>{u.rol}</span></td>
-                  <td><span className={`badge ${u.activo?'badge-green':'badge-gray'}`}>{u.activo?'Activo':'Inactivo'}</span></td>
-                  <td style={{color:'var(--text3)',fontSize:12}}>{fmtDateTime(u.creado_en)}</td>
-                  <td style={{display:'flex',gap:6}}>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(u)}>Editar</button>
-                    {u.activo===1 && (
-                      <button className="btn btn-danger btn-sm" onClick={()=>desactivar(u)}>Desactivar</button>
-                    )}
-                  </td>
-                </tr>
-              )) : (
-                <tr><td colSpan={6}><div className="empty-state">No hay usuarios registrados</div></td></tr>
-              )}
-            </tbody>
-          </table>
-        )}
+      {/* Tabs */}
+      <div style={{display:'flex',gap:4,marginBottom:16}}>
+        <button className={`btn ${tab==='usuarios'?'btn-primary':'btn-ghost'}`} onClick={()=>setTab('usuarios')}>
+          Usuarios
+        </button>
+        <button className={`btn ${tab==='accesos'?'btn-primary':'btn-ghost'}`} onClick={()=>setTab('accesos')}>
+          Historial de accesos
+        </button>
       </div>
 
+      {/* Tab usuarios */}
+      {tab === 'usuarios' && (
+        <div className="table-wrapper">
+          <div className="table-header">
+            <span className="table-title">Gestión de Usuarios</span>
+            <button className="btn btn-primary" onClick={openNew}>+ Nuevo usuario</button>
+          </div>
+          {loading ? <div className="spinner"/> : (
+            <table>
+              <thead>
+                <tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Creado</th><th></th></tr>
+              </thead>
+              <tbody>
+                {usuarios.length ? usuarios.map(u=>(
+                  <tr key={u.id}>
+                    <td style={{fontWeight:500}}>{u.nombre}</td>
+                    <td style={{color:'var(--text2)',fontSize:12}}>{u.email}</td>
+                    <td><span className={`badge ${rolBadge(u.rol)}`}>{u.rol}</span></td>
+                    <td><span className={`badge ${u.activo?'badge-green':'badge-gray'}`}>{u.activo?'Activo':'Inactivo'}</span></td>
+                    <td style={{color:'var(--text3)',fontSize:12}}>{fmtDateTime(u.creado_en)}</td>
+                    <td style={{display:'flex',gap:6}}>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>openEdit(u)}>Editar</button>
+                      {u.activo===1 && <button className="btn btn-danger btn-sm" onClick={()=>desactivar(u)}>Desactivar</button>}
+                    </td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={6}><div className="empty-state">No hay usuarios</div></td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Tab accesos */}
+      {tab === 'accesos' && (
+        <div className="table-wrapper">
+          <div className="table-header">
+            <span className="table-title">Historial de accesos</span>
+            <button className="btn btn-ghost btn-sm" onClick={loadAccesos}>↻ Actualizar</button>
+          </div>
+          {loading ? <div className="spinner"/> : (
+            <table>
+              <thead>
+                <tr><th>Usuario</th><th>Email</th><th>Acción</th><th>IP</th><th>Fecha</th></tr>
+              </thead>
+              <tbody>
+                {accesos.length ? accesos.map(a=>(
+                  <tr key={a.id}>
+                    <td style={{fontWeight:500}}>{a.usuario_nombre||'-'}</td>
+                    <td style={{color:'var(--text2)',fontSize:12}}>{a.email||'-'}</td>
+                    <td><span className={`badge ${accionBadge(a.accion)}`}>{a.accion.replace('_',' ')}</span></td>
+                    <td className="mono" style={{fontSize:11}}>{a.ip||'-'}</td>
+                    <td style={{color:'var(--text3)',fontSize:12}}>{fmtDateTime(a.creado_en)}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={5}><div className="empty-state">Sin registros de acceso</div></td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Modal crear/editar */}
       {modal && (
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
           <div className="modal" style={{maxWidth:440}}>
@@ -115,8 +170,8 @@ export default function Usuarios() {
                 <div className="input-group">
                   <label>Rol</label>
                   <select className="input" value={form.rol} onChange={e=>setForm(p=>({...p,rol:e.target.value}))}>
-                    <option value="cajero">Cajero — solo POS y sus ventas</option>
-                    <option value="vendedor">Vendedor — POS, ventas y productos</option>
+                    <option value="cajero">Cajero — solo punto de venta y sus ventas</option>
+                    <option value="vendedor">Vendedor — ventas y productos</option>
                     <option value="almacenista">Almacenista — inventario y productos</option>
                     <option value="admin">Administrador — acceso total</option>
                   </select>

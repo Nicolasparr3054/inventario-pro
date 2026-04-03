@@ -6,8 +6,8 @@ exports.getAll = async (req, res) => {
     let q = `SELECT p.*, c.nombre AS categoria_nombre, c.color AS categoria_color,
                     pr.nombre AS proveedor_nombre
              FROM productos p
-             LEFT JOIN categorias c  ON p.categoria_id  = c.id
-             LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
+             LEFT JOIN categorias c   ON p.categoria_id  = c.id
+             LEFT JOIN proveedores pr ON p.proveedor_id  = pr.id
              WHERE p.activo = ?`;
     const params = [activo];
     if (search) { q += ' AND (p.nombre LIKE ? OR p.codigo LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
@@ -23,10 +23,37 @@ exports.getOne = async (req, res) => {
     const [rows] = await pool.query(
       `SELECT p.*, c.nombre AS categoria_nombre, pr.nombre AS proveedor_nombre
        FROM productos p
-       LEFT JOIN categorias c  ON p.categoria_id  = c.id
-       LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
+       LEFT JOIN categorias c   ON p.categoria_id  = c.id
+       LEFT JOIN proveedores pr ON p.proveedor_id  = pr.id
        WHERE p.id = ?`, [req.params.id]
     );
+    if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
+    res.json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+// V3: buscar por código de barras o código de producto
+exports.buscarPorCodigo = async (req, res) => {
+  const { codigo } = req.query;
+  if (!codigo) return res.status(400).json({ error: 'Código requerido' });
+  try {
+    // Buscar primero por código directo del producto
+    let [rows] = await pool.query(
+      `SELECT p.*, c.nombre AS categoria_nombre, c.color AS categoria_color
+       FROM productos p
+       LEFT JOIN categorias c ON p.categoria_id = c.id
+       WHERE p.codigo = ? AND p.activo = 1`, [codigo]
+    );
+    // Si no encuentra, buscar en codigos_barras
+    if (!rows.length) {
+      [rows] = await pool.query(
+        `SELECT p.*, c.nombre AS categoria_nombre, c.color AS categoria_color
+         FROM codigos_barras cb
+         JOIN productos p ON cb.producto_id = p.id
+         LEFT JOIN categorias c ON p.categoria_id = c.id
+         WHERE cb.codigo = ? AND p.activo = 1`, [codigo]
+      );
+    }
     if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -63,7 +90,6 @@ exports.update = async (req, res) => {
           precio_compra, precio_venta, stock_minimo, imagen_url, activo } = req.body;
   const id = req.params.id;
   try {
-    // Guardar historial si cambiaron precios
     const [[actual]] = await pool.query('SELECT precio_compra, precio_venta FROM productos WHERE id=?', [id]);
     if (actual) {
       const cambioCompra = Number(precio_compra) !== Number(actual.precio_compra);
