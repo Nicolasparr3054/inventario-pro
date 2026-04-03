@@ -1,7 +1,34 @@
 # 📦 Inventario Pro — Sistema de Gestión Empresarial
 
-Sistema profesional de inventario y ventas desarrollado con React + Node.js + MySQL.
-Funciona desde **cualquier carpeta** del PC (Descargas, Documentos, Escritorio, etc.).
+Sistema profesional de inventario y ventas desarrollado con React + Node.js + MySQL. Funciona desde **cualquier carpeta** del PC (Descargas, Documentos, Escritorio, etc.).
+
+---
+
+## 🚀 Versiones
+
+### V1.0 — Base
+- Dashboard con KPIs en tiempo real
+- Punto de venta (POS)
+- CRUD de productos, clientes, categorías y proveedores
+- Historial de ventas
+- Control de inventario y stock bajo
+- Autenticación con JWT
+
+### V2.0 — Roles y Reportes
+- **Sistema de roles**: admin, cajero, vendedor, almacenista
+- **Dashboard por rol**: el cajero ve solo sus propias ventas
+- **Exportar ventas a CSV** (Excel)
+- **Exportar stock a CSV**
+- **Gestión de usuarios** desde la aplicación
+- **Historial de precios** por producto
+- Ventas registran el vendedor que las realizó
+
+### V3.0 — Experiencia Completa
+- **Recibo de venta** con botón de impresión al confirmar cada venta
+- **Escáner de código de barras** integrado en el POS (compatible con lectores USB)
+- **Imagen de productos** — sube foto por URL o desde tu computador
+- **Historial de accesos** — quién entró al sistema, cuándo y desde qué IP
+- **Log de login fallido** — intentos fallidos quedan registrados
 
 ---
 
@@ -16,73 +43,46 @@ Funciona desde **cualquier carpeta** del PC (Descargas, Documentos, Escritorio, 
 - Abrir XAMPP Control Panel
 - Iniciar **solo MySQL** (no necesitas Apache)
 
-### 3. Extensiones recomendadas en Visual Studio Code
-Instalar estas extensiones en VS Code (Ctrl+Shift+X):
-- **ES7+ React/Redux/React-Native snippets** (dsznajder)
-- **Prettier - Code formatter** (esbenp)
-- **ESLint** (Microsoft)
-- **GitLens** (GitKraken)
-- **Thunder Client** — para probar la API (opcional)
-- **MySQL** (cweijan) — para ver la BD desde VS Code
+### 3. Configurar la base de datos
+1. Abrir **MySQL Workbench** o **phpMyAdmin**
+2. Ejecutar el archivo `database.sql`
+3. Si vienes de V1: ejecutar también `migration_v2.sql`
+4. Si vienes de V2: ejecutar también `migration_v3.sql`
 
 ---
 
-## 🗄️ CONFIGURAR BASE DE DATOS
+## ▶️ INICIAR EL SISTEMA
 
-1. Abre **XAMPP Control Panel** e inicia **MySQL**
-2. Abre **MySQL Workbench**
-3. Conecta a `localhost` con usuario `root` y contraseña `123456`
-4. Abre el archivo `database.sql` de este proyecto
-5. Ejecuta todo el script (Ctrl+Shift+Enter o botón ⚡ Execute All)
-6. Verifica que se creó la base de datos `inventario_pro`
-
----
-
-## 🚀 INSTALACIÓN Y ARRANQUE
-
-### Opción A — Script automático (más fácil)
-
-**Windows:**
-1. Doble clic en `start.bat`
-2. Espera a que instale dependencias (solo la primera vez)
-3. Se abre el navegador automáticamente en http://localhost:5173
-
-**Mac / Linux:**
-1. Abrir Terminal en la carpeta del proyecto
-2. Ejecutar: `chmod +x start.sh && ./start.sh`
-
----
-
-### Opción B — Manual (desde VS Code)
-
-**Terminal 1 — Backend:**
+### Windows
 ```bash
-cd backend
-npm install          # Solo la primera vez
-npm start
+# Doble clic en:
+start.bat
 ```
 
-**Terminal 2 — Frontend:**
+### Mac / Linux
 ```bash
-cd frontend
-npm install          # Solo la primera vez
+chmod +x start.sh
+./start.sh
+```
+
+### Manual
+```bash
+# Terminal 1 — Backend
+cd inventario-pro/backend
+npm install
+npm start
+
+# Terminal 2 — Frontend
+cd inventario-pro/frontend
+npm install
 npm run dev
 ```
 
-Luego abrir: **http://localhost:5173**
+Luego abrir en el navegador: **http://localhost:5173**
 
 ---
 
-## 🔐 CREDENCIALES DE ACCESO
-
-| Campo    | Valor                      |
-|----------|----------------------------|
-| Email    | admin@inventariopro.com    |
-| Contraseña | password                 |
-
----
-
-## 📂 ESTRUCTURA DEL PROYECTO
+## 🗂️ ESTRUCTURA DEL PROYECTO
 
 ```
 inventario-pro/
@@ -91,8 +91,15 @@ inventario-pro/
 │   │   ├── config/
 │   │   │   └── database.js   ← Configuración MySQL
 │   │   ├── controllers/      ← Lógica de negocio
+│   │   │   ├── authController.js
+│   │   │   ├── dashboardController.js
+│   │   │   ├── productosController.js
+│   │   │   ├── ventasController.js
+│   │   │   ├── generalController.js
+│   │   │   ├── reportesController.js
+│   │   │   └── usuariosController.js
 │   │   ├── middleware/
-│   │   │   └── auth.js       ← Autenticación JWT
+│   │   │   └── auth.js       ← Autenticación JWT + roles
 │   │   ├── routes/
 │   │   │   └── index.js      ← Todas las rutas API
 │   │   └── index.js          ← Servidor Express
@@ -106,76 +113,99 @@ inventario-pro/
 │   │   ├── hooks/
 │   │   │   └── useAuth.jsx   ← Contexto de autenticación
 │   │   ├── pages/
-│   │   │   ├── Dashboard.jsx ← KPIs + gráficas
-│   │   │   ├── POS.jsx       ← Punto de venta
-│   │   │   ├── Productos.jsx ← CRUD productos
-│   │   │   ├── Ventas.jsx    ← Historial ventas
+│   │   │   ├── Dashboard.jsx ← KPIs + gráficas (vista por rol)
+│   │   │   ├── POS.jsx       ← Punto de venta + escáner + recibo
+│   │   │   ├── Productos.jsx ← CRUD productos + imágenes
+│   │   │   ├── Ventas.jsx    ← Historial + exportar CSV
 │   │   │   ├── Inventario.jsx← Stock bajo
 │   │   │   ├── Clientes.jsx  ← CRUD clientes
+│   │   │   ├── Usuarios.jsx  ← Gestión usuarios + historial accesos
 │   │   │   └── General.jsx   ← Categorías/Proveedores
 │   │   ├── utils/
 │   │   │   ├── api.js        ← Cliente HTTP (axios)
 │   │   │   └── format.js     ← Formateo de moneda/fechas
-│   │   ├── App.jsx           ← Rutas
+│   │   ├── App.jsx           ← Rutas + protección por rol
 │   │   ├── index.css         ← Estilos globales
 │   │   └── main.jsx
 │   └── package.json
 │
-├── database.sql              ← Script completo MySQL
+├── database.sql              ← Script base MySQL (V1)
+├── migration_v2.sql          ← Migración V2
+├── migration_v3.sql          ← Migración V3
 ├── start.bat                 ← Inicio automático Windows
 ├── start.sh                  ← Inicio automático Mac/Linux
-└── README.md                 ← Documentación del proyecto
+└── README.md
 ```
 
 ---
 
-## ⚙️ CONFIGURACIÓN (.env)
+## 🔐 ROLES DE USUARIO
 
-Si cambias la contraseña de MySQL, edita `backend/.env`:
+| Rol | Acceso |
+|---|---|
+| **Admin** | Acceso total — dashboard global, usuarios, reportes, configuración |
+| **Cajero** | Solo punto de venta y sus propias ventas |
+| **Vendedor** | Punto de venta, ventas y productos |
+| **Almacenista** | Productos e inventario |
+
+---
+
+## 👤 ACCESO DEMO
+
+| Campo | Valor |
+|---|---|
+| Email | `admin@inventariopro.com` |
+| Contraseña | `password` |
+
+| Campo | Valor |
+|---|---|
+| Email | `cajero@inventariopro.com` |
+| Contraseña | `password` |
+
+---
+
+## 🧰 TECH STACK
+
+| Capa | Tecnología |
+|---|---|
+| Frontend | React 18 + Vite + Recharts |
+| Backend | Node.js + Express |
+| Base de datos | MySQL |
+| Autenticación | JWT + bcrypt |
+| Estilos | CSS personalizado |
+
+---
+
+## 📊 FUNCIONALIDADES PRINCIPALES
+
+- ✅ Dashboard con KPIs, gráficas y comparativo mensual
+- ✅ Punto de venta con escáner de código de barras
+- ✅ Recibo de venta imprimible
+- ✅ Imágenes de productos (URL o archivo local)
+- ✅ Exportar ventas y stock a CSV (Excel)
+- ✅ Historial de accesos y log de seguridad
+- ✅ Alertas automáticas de stock bajo
+- ✅ Historial de cambios de precios
+- ✅ Sistema de roles y permisos
+- ✅ Gestión completa de usuarios
+
+---
+
+## 📝 VARIABLES DE ENTORNO
+
+Archivo `backend/.env`:
 
 ```env
 DB_HOST=localhost
-DB_PORT=3306
 DB_USER=root
-DB_PASSWORD=123456   ← Cambia aquí
+DB_PASSWORD=
 DB_NAME=inventario_pro
-JWT_SECRET=inventariopro_super_secret_key_2024_cambiar_en_produccion
+DB_PORT=3306
+JWT_SECRET=inventario_pro_secret_key
+JWT_EXPIRES=8h
+PORT=3001
 ```
 
 ---
 
-## 🌟 MÓDULOS DEL SISTEMA
-
-| Módulo | Descripción |
-|--------|-------------|
-| **Dashboard** | KPIs del día, gráficas de ventas semanales, top productos, movimientos recientes |
-| **Punto de Venta** | Interfaz de caja rápida, carrito, descuentos, métodos de pago |
-| **Ventas** | Historial completo con filtros, detalle por venta |
-| **Productos** | CRUD completo, búsqueda, filtros, ajuste de stock |
-| **Inventario** | Alertas de stock bajo, entradas rápidas |
-| **Clientes** | CRUD de clientes con NIT, email, teléfono |
-| **Categorías** | Organización por categorías con colores |
-| **Proveedores** | Registro de proveedores |
-
----
-
-## 🔧 SOLUCIÓN DE PROBLEMAS
-
-**MySQL no conecta:**
-- Verifica que XAMPP tiene MySQL iniciado (fondo verde)
-- Confirma que la contraseña en `.env` coincide con la de MySQL
-
-**Puerto en uso:**
-- Backend usa puerto **3001** — si está ocupado, cambia `PORT=3001` en `.env`
-- Frontend usa puerto **5173** — Vite lo cambia automáticamente si está ocupado
-
-**Error de CORS:**
-- No abras el frontend desde un archivo HTML directamente
-- Siempre usa `npm run dev` y accede por `http://localhost:5173`
-
----
-
-## 💰 LICENCIA
-
-Software propietario. Todos los derechos reservados.
-Desarrollado como solución comercial para pymes.
+*Desarrollado con React + Node.js + MySQL*
