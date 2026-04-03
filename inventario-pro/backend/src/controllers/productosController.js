@@ -61,13 +61,28 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   const { nombre, descripcion, categoria_id, proveedor_id,
           precio_compra, precio_venta, stock_minimo, imagen_url, activo } = req.body;
+  const id = req.params.id;
   try {
+    // Guardar historial si cambiaron precios
+    const [[actual]] = await pool.query('SELECT precio_compra, precio_venta FROM productos WHERE id=?', [id]);
+    if (actual) {
+      const cambioCompra = Number(precio_compra) !== Number(actual.precio_compra);
+      const cambioVenta  = Number(precio_venta)  !== Number(actual.precio_venta);
+      if (cambioCompra || cambioVenta) {
+        await pool.query(
+          `INSERT INTO historial_precios
+            (producto_id, precio_compra_anterior, precio_venta_anterior, precio_compra_nuevo, precio_venta_nuevo, usuario_id)
+           VALUES (?,?,?,?,?,?)`,
+          [id, actual.precio_compra, actual.precio_venta, precio_compra, precio_venta, req.user?.id || null]
+        );
+      }
+    }
     await pool.query(
       `UPDATE productos SET nombre=?,descripcion=?,categoria_id=?,proveedor_id=?,
          precio_compra=?,precio_venta=?,stock_minimo=?,imagen_url=?,activo=?
        WHERE id=?`,
       [nombre, descripcion, categoria_id||null, proveedor_id||null,
-       precio_compra, precio_venta, stock_minimo, imagen_url||null, activo ?? 1, req.params.id]
+       precio_compra, precio_venta, stock_minimo, imagen_url||null, activo ?? 1, id]
     );
     res.json({ message: 'Producto actualizado' });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -79,7 +94,7 @@ exports.ajustarStock = async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT stock FROM productos WHERE id=?', [id]);
     if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
-    const stockAnt  = rows[0].stock;
+    const stockAnt   = rows[0].stock;
     const stockNuevo = stockAnt + parseInt(cantidad);
     if (stockNuevo < 0) return res.status(400).json({ error: 'Stock no puede ser negativo' });
     await pool.query('UPDATE productos SET stock=? WHERE id=?', [stockNuevo, id]);
@@ -99,6 +114,20 @@ exports.getLowStock = async (req, res) => {
        FROM productos p LEFT JOIN categorias c ON p.categoria_id=c.id
        WHERE p.stock <= p.stock_minimo AND p.activo=1
        ORDER BY (p.stock - p.stock_minimo) ASC`
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.getPriceHistory = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT h.*, u.nombre AS usuario_nombre
+       FROM historial_precios h
+       LEFT JOIN usuarios u ON h.usuario_id = u.id
+       WHERE h.producto_id = ?
+       ORDER BY h.creado_en DESC LIMIT 50`,
+      [req.params.id]
     );
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }

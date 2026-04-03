@@ -8,11 +8,21 @@ import POS        from './pages/POS';
 import Ventas     from './pages/Ventas';
 import Inventario from './pages/Inventario';
 import Clientes   from './pages/Clientes';
+import Usuarios   from './pages/Usuarios';
 import { Categorias, Proveedores } from './pages/General';
 
+// Ruta privada - solo requiere estar logueado
 const Private = ({ children }) => {
   const { user } = useAuth();
   return user ? children : <Navigate to="/login" replace/>;
+};
+
+// Ruta solo para admin
+const AdminOnly = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace/>;
+  if (user.rol !== 'admin') return <Navigate to="/" replace/>;
+  return children;
 };
 
 function App() {
@@ -35,8 +45,9 @@ function App() {
           <Route path="/productos"   element={<Private><Productos/></Private>}/>
           <Route path="/inventario"  element={<Private><Inventario/></Private>}/>
           <Route path="/clientes"    element={<Private><Clientes/></Private>}/>
-          <Route path="/categorias"  element={<Private><Categorias/></Private>}/>
-          <Route path="/proveedores" element={<Private><Proveedores/></Private>}/>
+          <Route path="/categorias"  element={<AdminOnly><Categorias/></AdminOnly>}/>
+          <Route path="/proveedores" element={<AdminOnly><Proveedores/></AdminOnly>}/>
+          <Route path="/usuarios"    element={<AdminOnly><Usuarios/></AdminOnly>}/>
           <Route path="*"            element={<Navigate to="/" replace/>}/>
         </Routes>
       </BrowserRouter>

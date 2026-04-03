@@ -9,14 +9,18 @@ const genNumero = () => {
 exports.getAll = async (req, res) => {
   try {
     const { desde, hasta, estado } = req.query;
-    let q = `SELECT v.*, c.nombre AS cliente_nombre,
+    let q = `SELECT v.*, c.nombre AS cliente_nombre, u.nombre AS vendedor_nombre,
                (SELECT COUNT(*) FROM venta_detalles WHERE venta_id=v.id) AS total_items
              FROM ventas v
-             LEFT JOIN clientes c ON v.cliente_id=c.id WHERE 1=1`;
+             LEFT JOIN clientes c  ON v.cliente_id  = c.id
+             LEFT JOIN usuarios u  ON v.usuario_id  = u.id
+             WHERE 1=1`;
     const p = [];
-    if (desde) { q+=' AND DATE(v.creado_en)>=?'; p.push(desde); }
-    if (hasta) { q+=' AND DATE(v.creado_en)<=?'; p.push(hasta); }
+    if (desde)  { q+=' AND DATE(v.creado_en)>=?'; p.push(desde); }
+    if (hasta)  { q+=' AND DATE(v.creado_en)<=?'; p.push(hasta); }
     if (estado) { q+=' AND v.estado=?'; p.push(estado); }
+    // Cajeros solo ven sus propias ventas
+    if (req.user?.rol === 'cajero') { q+=' AND v.usuario_id=?'; p.push(req.user.id); }
     q += ' ORDER BY v.creado_en DESC LIMIT 200';
     const [rows] = await pool.query(q, p);
     res.json(rows);
@@ -26,8 +30,12 @@ exports.getAll = async (req, res) => {
 exports.getOne = async (req, res) => {
   try {
     const [[venta]] = await pool.query(
-      `SELECT v.*, c.nombre AS cliente_nombre, c.nit AS cliente_nit, c.telefono AS cliente_tel
-       FROM ventas v LEFT JOIN clientes c ON v.cliente_id=c.id WHERE v.id=?`, [req.params.id]
+      `SELECT v.*, c.nombre AS cliente_nombre, c.nit AS cliente_nit, c.telefono AS cliente_tel,
+              u.nombre AS vendedor_nombre
+       FROM ventas v
+       LEFT JOIN clientes c ON v.cliente_id = c.id
+       LEFT JOIN usuarios u ON v.usuario_id = u.id
+       WHERE v.id=?`, [req.params.id]
     );
     if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
     const [detalles] = await pool.query(
@@ -45,7 +53,6 @@ exports.create = async (req, res) => {
   const conn = await pool.getConnection();
   await conn.beginTransaction();
   try {
-    // Verificar stock
     for (const item of items) {
       const [[p]] = await conn.query('SELECT stock,nombre FROM productos WHERE id=? AND activo=1', [item.producto_id]);
       if (!p) throw new Error(`Producto ${item.producto_id} no encontrado`);
@@ -56,9 +63,9 @@ exports.create = async (req, res) => {
     const total    = subtotal + impuesto - descuento;
     const numero   = genNumero();
     const [r] = await conn.query(
-      `INSERT INTO ventas (numero_venta,cliente_id,subtotal,impuesto,descuento,total,metodo_pago,notas)
-       VALUES (?,?,?,?,?,?,?,?)`,
-      [numero, cliente_id||null, subtotal, impuesto, descuento, total, metodo_pago||'efectivo', notas||null]
+      `INSERT INTO ventas (numero_venta,cliente_id,subtotal,impuesto,descuento,total,metodo_pago,notas,usuario_id)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [numero, cliente_id||null, subtotal, impuesto, descuento, total, metodo_pago||'efectivo', notas||null, req.user?.id||null]
     );
     const venta_id = r.insertId;
     for (const item of items) {
