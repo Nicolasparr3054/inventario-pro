@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-//  App.jsx  ·  V4 – Rutas + protección por rol
+//  App.jsx  ·  V5 – Rutas + protección por rol
 // ══════════════════════════════════════════════════════════════
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -14,13 +14,16 @@ import Inventario   from './pages/Inventario';
 import Clientes     from './pages/Clientes';
 import Usuarios     from './pages/Usuarios';
 import General      from './pages/General';
-
-// V4
 import Devoluciones from './pages/Devoluciones';
 import OrdenesCompra from './pages/OrdenesCompra';
 import Empresa      from './pages/Empresa';
+// V5
+import Sucursales       from './pages/Sucursales';
+import ReportesAvanzados from './pages/ReportesAvanzados';
+import Descuentos       from './pages/Descuentos';
+import Caja             from './pages/Caja';
+import Etiquetas        from './pages/Etiquetas';
 
-// ── Protección de ruta ───────────────────────────────────────
 function PrivateRoute({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="spinner" style={{ margin: '40vh auto' }}/>;
@@ -30,68 +33,67 @@ function PrivateRoute({ children, roles }) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
-
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
 
-      {/* Dashboard – todos los roles */}
-      <Route path="/dashboard" element={
-        <PrivateRoute><Dashboard /></PrivateRoute>
-      }/>
+      <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>}/>
 
-      {/* POS – admin, cajero, vendedor */}
       <Route path="/pos" element={
         <PrivateRoute roles={['admin','cajero','vendedor']}><POS /></PrivateRoute>
       }/>
 
-      {/* Ventas – todos */}
-      <Route path="/ventas" element={
-        <PrivateRoute><Ventas /></PrivateRoute>
-      }/>
+      <Route path="/ventas" element={<PrivateRoute><Ventas /></PrivateRoute>}/>
 
-      {/* V4: Devoluciones – admin, cajero */}
       <Route path="/devoluciones" element={
         <PrivateRoute roles={['admin','cajero']}><Devoluciones /></PrivateRoute>
       }/>
 
-      {/* Productos – admin, almacenista */}
       <Route path="/productos" element={
         <PrivateRoute roles={['admin','almacenista']}><Productos /></PrivateRoute>
       }/>
 
-      {/* Inventario – todos */}
-      <Route path="/inventario" element={
-        <PrivateRoute><Inventario /></PrivateRoute>
-      }/>
+      <Route path="/inventario" element={<PrivateRoute><Inventario /></PrivateRoute>}/>
 
-      {/* V4: Órdenes de compra – admin, almacenista */}
       <Route path="/ordenes-compra" element={
         <PrivateRoute roles={['admin','almacenista']}><OrdenesCompra /></PrivateRoute>
       }/>
 
-      {/* Clientes – todos */}
-      <Route path="/clientes" element={
-        <PrivateRoute><Clientes /></PrivateRoute>
-      }/>
+      <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>}/>
 
-      {/* General – admin */}
       <Route path="/general" element={
         <PrivateRoute roles={['admin']}><General /></PrivateRoute>
       }/>
 
-      {/* V4: Empresa – admin */}
       <Route path="/empresa" element={
         <PrivateRoute roles={['admin']}><Empresa /></PrivateRoute>
       }/>
 
-      {/* Usuarios – admin */}
       <Route path="/usuarios" element={
         <PrivateRoute roles={['admin']}><Usuarios /></PrivateRoute>
       }/>
 
-      {/* Redirect raíz */}
+      {/* ── V5 ─────────────────────────────── */}
+      <Route path="/sucursales" element={
+        <PrivateRoute roles={['admin']}><Sucursales /></PrivateRoute>
+      }/>
+
+      <Route path="/reportes-avanzados" element={
+        <PrivateRoute roles={['admin']}><ReportesAvanzados /></PrivateRoute>
+      }/>
+
+      <Route path="/descuentos" element={
+        <PrivateRoute roles={['admin']}><Descuentos /></PrivateRoute>
+      }/>
+
+      <Route path="/caja" element={
+        <PrivateRoute roles={['admin','cajero']}><Caja /></PrivateRoute>
+      }/>
+
+      <Route path="/etiquetas" element={
+        <PrivateRoute roles={['admin','almacenista']}><Etiquetas /></PrivateRoute>
+      }/>
+
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

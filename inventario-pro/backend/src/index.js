@@ -14,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', routes);
 
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', app: 'Inventario Pro API', version: '4.0.0' });
+  res.json({ status: 'ok', app: 'Inventario Pro API', version: '5.0.0' });
 });
 
 app.use((err, req, res, next) => {
