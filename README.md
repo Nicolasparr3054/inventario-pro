@@ -2,7 +2,7 @@
 
 > Sistema profesional de gestión de inventario y punto de venta desarrollado con React + Node.js + MySQL.
 
-![Version](https://img.shields.io/badge/version-5.0.0-blue)
+![Version](https://img.shields.io/badge/version-6.0.0-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -20,7 +20,12 @@ Cajero:     cajero@inventariopro.com /  password
 
 ## 🗂️ Historial de versiones
 
-### V5.0 — Suite Empresarial *(actual)*
+### V6.0 — Comunicación y Productividad *(actual)*
+- 📧 **Envío de factura por email** directamente desde el historial de ventas y el punto de venta, usando Nodemailer con soporte SMTP/Gmail
+- 📥 **Exportar reportes a Excel** (.xlsx) desde Reportes Avanzados: rentabilidad, top 10 del mes y comparativo mensual
+- 🔖 **Código de barras automático** al crear productos (formato `PROD-XXXXXXXX`) con botón para regenerar
+
+### V5.0 — Suite Empresarial
 - 🏪 **Multi-Sucursal** con stock independiente por sucursal y vista consolidada para admin
 - 📱 **App Móvil PWA** instalable con escáner de cámara y modo offline básico
 - 📊 **Reportes Avanzados** exportables a PDF: rentabilidad, top ventas, comparativo mensual
@@ -72,6 +77,8 @@ Cajero:     cajero@inventariopro.com /  password
 | Iconos | Lucide React |
 | Códigos de barras | JsBarcode (CDN) |
 | Escáner cámara | html5-qrcode (CDN) |
+| Excel export | SheetJS / xlsx (CDN) |
+| Email | Nodemailer + SMTP/Gmail |
 | PWA | manifest.json + Service Worker |
 
 ---
@@ -118,7 +125,7 @@ Al terminar debes ver:
 
 ### 3. Configurar variables de entorno
 
-Crea el archivo `backend/.env`:
+Edita el archivo `backend/.env`:
 
 ```env
 PORT=3001
@@ -129,11 +136,31 @@ DB_PASSWORD=tu_contraseña_mysql
 DB_NAME=inventario_pro
 JWT_SECRET=cambia_esto_por_una_clave_segura
 JWT_EXPIRES=8h
+
+# V6 — Configuración SMTP para envío de facturas por email
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASS=tu_contraseña_de_aplicacion
 ```
+
+> ⚠️ **Gmail:** El campo `SMTP_PASS` debe ser una **contraseña de aplicación**, no tu contraseña normal. Generala en: Google Account → Seguridad → Verificación en dos pasos → Contraseñas de aplicaciones.
 
 > ⚠️ **Importante:** Nunca compartas este archivo públicamente. Cada instalación debe tener su propia contraseña y `JWT_SECRET`.
 
-### 4. Iniciar el sistema
+### 4. Instalar dependencias
+
+```bash
+# Backend
+cd backend
+npm install
+
+# Frontend
+cd ../frontend
+npm install
+```
+
+### 5. Iniciar el sistema
 
 **Windows:**
 ```
@@ -149,10 +176,10 @@ chmod +x start.sh
 **Manual (2 terminales):**
 ```bash
 # Terminal 1 — Backend
-cd backend && npm install && npm start
+cd backend && npm run dev
 
 # Terminal 2 — Frontend
-cd frontend && npm install && npm run dev
+cd frontend && npm run dev
 ```
 
 Abre: **http://localhost:5173**
@@ -173,7 +200,7 @@ inventario-pro/
 │   │   │   ├── descuentosController.js        ← V5
 │   │   │   ├── devolucionesController.js
 │   │   │   ├── etiquetasController.js         ← V5
-│   │   │   ├── facturaController.js
+│   │   │   ├── facturaController.js           ← V6 enviarFacturaPorEmail
 │   │   │   ├── generalController.js
 │   │   │   ├── ordenesCompraController.js
 │   │   │   ├── productosController.js
@@ -183,7 +210,7 @@ inventario-pro/
 │   │   │   ├── usuariosController.js
 │   │   │   └── ventasController.js
 │   │   ├── middleware/auth.js
-│   │   ├── routes/index.js
+│   │   ├── routes/index.js                    ← V6 ruta enviar-factura
 │   │   └── index.js
 │   ├── .env                                   ← NO incluir al entregar
 │   └── package.json
@@ -207,12 +234,12 @@ inventario-pro/
 │   │   │   ├── Inventario.jsx
 │   │   │   ├── Login.jsx
 │   │   │   ├── OrdenesCompra.jsx
-│   │   │   ├── POS.jsx
-│   │   │   ├── Productos.jsx
-│   │   │   ├── ReportesAvanzados.jsx          ← V5
+│   │   │   ├── POS.jsx                        ← V6 botón email post-venta
+│   │   │   ├── Productos.jsx                  ← V6 código automático
+│   │   │   ├── ReportesAvanzados.jsx          ← V6 exportar Excel
 │   │   │   ├── Sucursales.jsx                 ← V5
 │   │   │   ├── Usuarios.jsx
-│   │   │   └── Ventas.jsx
+│   │   │   └── Ventas.jsx                     ← V6 botón email
 │   │   ├── utils/
 │   │   │   ├── api.js
 │   │   │   └── format.js
@@ -228,7 +255,7 @@ inventario-pro/
 ├── migration_v2.sql
 ├── migration_v3.sql
 ├── migration_v4.sql
-├── migration_v5.sql                           ← V5
+├── migration_v5.sql
 ├── start.bat
 ├── start.sh
 └── README.md
@@ -316,6 +343,7 @@ inventario-pro/
 | POST | `/api/ventas` | Crear venta |
 | GET | `/api/ventas/:id/recibo` | Datos del recibo |
 | GET | `/api/ventas/:id/factura` | Factura HTML/PDF |
+| POST | `/api/ventas/:id/enviar-factura` | Enviar factura por email *(V6)* |
 
 ### Devoluciones
 | Método | Ruta | Descripción |
@@ -351,7 +379,8 @@ inventario-pro/
 | GET | `/api/sucursales/:id` | Detalle |
 | POST | `/api/sucursales` | Crear |
 | PUT | `/api/sucursales/:id` | Editar |
-| GET | `/api/sucursales/:id/stock` | Stock de la sucursal |
+| GET | `/api/sucursales/stock` | Stock por sucursal |
+| GET | `/api/sucursales/consolidado` | Vista consolidada admin |
 
 ### Descuentos *(V5)*
 | Método | Ruta | Descripción |
@@ -361,22 +390,25 @@ inventario-pro/
 | POST | `/api/descuentos` | Crear |
 | PUT | `/api/descuentos/:id` | Editar |
 | DELETE | `/api/descuentos/:id` | Eliminar |
-| GET | `/api/descuentos/validar?codigo=X` | Validar código en POS |
+| GET | `/api/descuentos/buscar?codigo=X` | Validar código en POS |
 
 ### Caja *(V5)*
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/caja/turno-activo` | Turno abierto del usuario |
+| GET | `/api/caja/turnos` | Historial de turnos (admin) |
 | POST | `/api/caja/abrir` | Abrir turno |
-| POST | `/api/caja/movimiento` | Registrar ingreso/egreso |
-| POST | `/api/caja/cerrar` | Cerrar y cuadrar turno |
-| GET | `/api/caja/historial` | Historial de turnos (admin) |
+| PATCH | `/api/caja/turnos/:id/cerrar` | Cerrar y cuadrar turno |
+| GET | `/api/caja/turnos/:id/resumen` | Resumen del turno |
+| GET | `/api/caja/turnos/:turno_id/movimientos` | Movimientos del turno |
+| POST | `/api/caja/turnos/:turno_id/movimientos` | Registrar movimiento |
 
 ### Reportes avanzados *(V5)*
 | Método | Ruta | Descripción |
 |--------|------|-------------|
+| GET | `/api/reportes-avanzados/datos` | Todos los datos juntos |
 | GET | `/api/reportes-avanzados/rentabilidad` | Rentabilidad por producto |
-| GET | `/api/reportes-avanzados/top-mes` | Top 10 más vendidos del mes |
+| GET | `/api/reportes-avanzados/top10-mes` | Top 10 más vendidos del mes |
 | GET | `/api/reportes-avanzados/comparativo` | Comparativo últimos 6 meses |
 
 ---
@@ -386,13 +418,15 @@ inventario-pro/
 | Error | Causa | Solución |
 |-------|-------|---------|
 | `Access denied for user 'root'` | Contraseña MySQL incorrecta | Editar `DB_PASSWORD` en `backend/.env` |
-| `ECONNREFUSED` | Backend caído | Revisar la terminal del backend |
+| `ECONNREFUSED` | Backend caído | Arrancar el backend con `npm run dev` en la carpeta `backend/` |
 | `Credenciales incorrectas` | Usuario no existe en BD | Ejecutar `database_completo_v4.sql` + `migration_v5.sql` |
 | `expiresIn should be a number` | Falta `JWT_EXPIRES` en `.env` | Agregar `JWT_EXPIRES=8h` |
 | `Token requerido` en factura | URL abierta sin sesión | Usar el botón 🧾 desde la app |
 | Puerto 3001 ocupado | Otro proceso en ese puerto | Cambiar `PORT` en `.env` |
 | `Data too long for column 'imagen_url'` | Campo VARCHAR muy corto para base64 | Ejecutar: `ALTER TABLE productos MODIFY COLUMN imagen_url TEXT;` |
 | POS bloquea ventas | No hay turno de caja abierto | Abrir turno desde `/caja` antes de vender |
+| `Error enviando factura` (email) | SMTP no configurado o credenciales incorrectas | Verificar `SMTP_USER` y `SMTP_PASS` en `backend/.env`. Para Gmail usar contraseña de aplicación |
+| `Cannot find module 'nodemailer'` | Dependencia no instalada | Ejecutar `npm install` dentro de la carpeta `backend/` |
 
 ---
 
