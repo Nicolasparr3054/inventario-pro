@@ -1,7 +1,7 @@
 {
   "name": "inventario-pro-backend",
-  "version": "4.0.0",
-  "description": "API REST para Inventario Pro V4",
+  "version": "6.0.0",
+  "description": "API REST para Inventario Pro V6",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -13,7 +13,8 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.6.5"
+    "mysql2": "^3.6.5",
+    "nodemailer": "^6.9.9"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

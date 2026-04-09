@@ -36,7 +36,14 @@ export default function Productos() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openNew  = () => { setForm(empty); setEditId(null); setImgPreview(''); setModal(true); };
+  const openNew  = () => {
+    setForm(empty);
+    setEditId(null);
+    setImgPreview('');
+    setModal(true);
+    // V6: auto-generar código al crear nuevo producto
+    setForm(prev => ({ ...prev, codigo: 'PROD-' + Date.now().toString().slice(-8) }));
+  };
   const openEdit = p => {
     setForm({ ...p, categoria_id: p.categoria_id||'', proveedor_id: p.proveedor_id||'' });
     setEditId(p.id);
@@ -161,7 +168,17 @@ export default function Productos() {
             <form onSubmit={save}>
               <div className="modal-body">
                 <div className="form-grid">
-                  <div className="input-group"><label>Código *</label><input className="input" value={form.codigo} onChange={f('codigo')} required disabled={!!editId}/></div>
+                  <div className="input-group"><label>Código *</label>
+                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                      <input className="input" value={form.codigo} onChange={f('codigo')} required disabled={!!editId}/>
+                      {!editId && (
+                        <button type="button" className="btn btn-sm" title="Generar nuevo código"
+                          onClick={() => setForm(prev => ({ ...prev, codigo: 'PROD-' + Date.now().toString().slice(-8) }))}>
+                          🔄
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <div className="input-group"><label>Nombre *</label><input className="input" value={form.nombre} onChange={f('nombre')} required/></div>
                   <div className="input-group full"><label>Descripción</label><input className="input" value={form.descripcion} onChange={f('descripcion')}/></div>
                   <div className="input-group"><label>Categoría</label>

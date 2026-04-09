@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-//  ReportesAvanzados.jsx  ·  V5 – Reportes avanzados (admin)
+//  ReportesAvanzados.jsx  ·  V6 – + Exportar reportes a Excel
 // ══════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
@@ -8,8 +8,19 @@ import { fmt, fmtNum } from '../utils/format';
 import toast from 'react-hot-toast';
 
 export default function ReportesAvanzados() {
-  const [datos, setDatos]   = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [datos, setDatos]       = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [xlsxListo, setXlsxListo] = useState(false);
+
+  // V6: Cargar SheetJS CDN si no está disponible
+  useEffect(() => {
+    if (window.XLSX) { setXlsxListo(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload = () => setXlsxListo(true);
+    script.onerror = () => toast.error('No se pudo cargar SheetJS');
+    document.head.appendChild(script);
+  }, []);
 
   useEffect(() => {
     api.get('/reportes-avanzados/datos')
@@ -22,6 +33,47 @@ export default function ReportesAvanzados() {
     const token = localStorage.getItem('token');
     const url = `/api/reportes-avanzados/${tipo}?token=${token}`;
     window.open(url, '_blank');
+  };
+
+  // V6: Exportar a Excel
+  const exportarExcel = (tipo) => {
+    if (!window.XLSX || !datos) return;
+    let filas = [];
+    let nombreArchivo = '';
+
+    if (tipo === 'rentabilidad') {
+      nombreArchivo = 'reporte_rentabilidad.xlsx';
+      filas = (datos.rentabilidad || []).map(p => ({
+        'Producto':         p.nombre,
+        'Precio Compra':    Number(p.precio_compra) || 0,
+        'Precio Venta':     Number(p.precio_venta)  || 0,
+        'Unidades Vendidas':parseInt(p.unidades)    || 0,
+        'Ingresos':         Number(p.ingresos)      || 0,
+        'Costo':            Number(p.costo)         || 0,
+        'Utilidad':         Number(p.utilidad)      || 0,
+        'Margen %':         Number(p.margen)        || 0,
+      }));
+    } else if (tipo === 'top10') {
+      nombreArchivo = 'reporte_top10.xlsx';
+      filas = (datos.top10 || []).map(p => ({
+        'Producto':          p.nombre,
+        'Unidades Vendidas': parseInt(p.unidades) || 0,
+        'Total Ventas':      Number(p.total)      || 0,
+      }));
+    } else if (tipo === 'comparativo') {
+      nombreArchivo = 'reporte_comparativo.xlsx';
+      filas = (datos.mensual || []).map(m => ({
+        'Mes':          m.mes,
+        'Total Ventas': Number(m.total)      || 0,
+        'N° Ventas':    parseInt(m.num_ventas) || 0,
+        'Variación %':  Number(m.variacion)  || 0,
+      }));
+    }
+
+    const ws = window.XLSX.utils.json_to_sheet(filas);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
+    window.XLSX.writeFile(wb, nombreArchivo);
   };
 
   // Calcular el máximo para barras
@@ -42,6 +94,8 @@ export default function ReportesAvanzados() {
       .toLocaleString('es-CO', { month: 'short', year: '2-digit' });
   };
 
+  const btnExcelDisabled = !datos || !xlsxListo;
+
   return (
     <Layout>
       <div className="page-header">
@@ -53,11 +107,20 @@ export default function ReportesAvanzados() {
           <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('rentabilidad')}>
             🖨️ Rentabilidad PDF
           </button>
+          <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('rentabilidad')}>
+            📥 Excel
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('top10-mes')}>
             🖨️ Top 10 PDF
           </button>
+          <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('top10')}>
+            📥 Excel
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('comparativo')}>
             🖨️ Comparativo PDF
+          </button>
+          <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('comparativo')}>
+            📥 Excel
           </button>
         </div>
       </div>
@@ -101,7 +164,10 @@ export default function ReportesAvanzados() {
             <div className="card">
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <h3 style={{ fontSize:14, fontWeight:600 }}>🏆 Top 10 del Mes</h3>
-                <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('top10-mes')}>🖨️ PDF</button>
+                <div style={{ display:'flex', gap:6 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('top10-mes')}>🖨️ PDF</button>
+                  <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('top10')}>📥 Excel</button>
+                </div>
               </div>
               {datos.top10.length === 0
                 ? <p style={{ color:'var(--text3)', fontSize:12, textAlign:'center', padding:20 }}>Sin ventas este mes</p>
@@ -126,7 +192,10 @@ export default function ReportesAvanzados() {
             <div className="card">
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <h3 style={{ fontSize:14, fontWeight:600 }}>📅 Últimos 6 Meses</h3>
-                <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('comparativo')}>🖨️ PDF</button>
+                <div style={{ display:'flex', gap:6 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('comparativo')}>🖨️ PDF</button>
+                  <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('comparativo')}>📥 Excel</button>
+                </div>
               </div>
               {datos.mensual.length === 0
                 ? <p style={{ color:'var(--text3)', fontSize:12, textAlign:'center', padding:20 }}>Sin datos</p>
@@ -165,7 +234,10 @@ export default function ReportesAvanzados() {
           <div className="card">
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <h3 style={{ fontSize:14, fontWeight:600 }}>💰 Rentabilidad por Producto</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('rentabilidad')}>🖨️ PDF completo</button>
+              <div style={{ display:'flex', gap:6 }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('rentabilidad')}>🖨️ PDF completo</button>
+                <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('rentabilidad')}>📥 Excel</button>
+              </div>
             </div>
             <div style={{ overflowX:'auto' }}>
               <table className="table">

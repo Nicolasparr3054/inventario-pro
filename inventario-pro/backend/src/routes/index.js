@@ -37,6 +37,7 @@ router.get('/ventas/:id',            auth, ventaCtrl.getOne);
 router.post('/ventas',               auth, ventaCtrl.create);
 router.get('/ventas/:id/recibo',     auth, ventaCtrl.getRecibo);
 router.get('/ventas/:id/factura',    factCtrl.facturaPDF);
+router.post('/ventas/:id/enviar-factura', auth, factCtrl.enviarFacturaPorEmail);
 
 router.get('/devoluciones',      auth, requireRole('admin','cajero'), devCtrl.getAll);
 router.get('/devoluciones/:id',  auth, requireRole('admin','cajero'), devCtrl.getOne);
