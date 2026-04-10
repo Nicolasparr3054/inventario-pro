@@ -187,7 +187,7 @@ Abre: **http://localhost:5173**
 
 ## 🗂️ Estructura del proyecto
 
-\`\`\`
+```
 inventario-pro/
 ├── backend/
 │   ├── src/
@@ -261,9 +261,7 @@ inventario-pro/
 ├── start.bat
 ├── start.sh
 └── README.md
-\`\`\`
-
----
+```
 
 ## 🔐 Roles y permisos
 
