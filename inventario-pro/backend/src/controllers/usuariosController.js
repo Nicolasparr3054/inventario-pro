@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 const bcrypt   = require('bcryptjs');
+const { registrar } = require('./auditoriaController');
 
 exports.getAll = async (req, res) => {
   try {
@@ -19,6 +20,9 @@ exports.create = async (req, res) => {
       `INSERT INTO usuarios (nombre, email, password, rol) VALUES (?,?,?,?)`,
       [nombre, email, hash, rol || 'cajero']
     );
+    // V7: Auditoría
+    await registrar(pool, req.user, 'crear_usuario', 'usuarios', r.insertId,
+      `Usuario creado: ${nombre} (${email}) - Rol: ${rol || 'cajero'}`, req.ip);
     res.status(201).json({ id: r.insertId, message: 'Usuario creado' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El email ya está registrado' });
@@ -44,6 +48,9 @@ exports.update = async (req, res) => {
         [nombre, email, rol, activo ?? 1, id]
       );
     }
+    // V7: Auditoría
+    await registrar(pool, req.user, 'modificar_usuario', 'usuarios', id,
+      `Usuario modificado: ${nombre} (${email}) - Rol: ${rol} - Activo: ${activo}`, req.ip);
     res.json({ message: 'Usuario actualizado' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
@@ -53,7 +60,11 @@ exports.remove = async (req, res) => {
   if (Number(id) === req.user.id)
     return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
   try {
+    const [[u]] = await pool.query('SELECT nombre, email FROM usuarios WHERE id=?', [id]);
     await pool.query(`UPDATE usuarios SET activo=0 WHERE id=?`, [id]);
+    // V7: Auditoría
+    await registrar(pool, req.user, 'eliminar_usuario', 'usuarios', id,
+      `Usuario desactivado: ${u?.nombre || ''} (${u?.email || ''})`, req.ip);
     res.json({ message: 'Usuario desactivado' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };

@@ -103,24 +103,24 @@ export default function ReportesAvanzados() {
           <h1 className="page-title">📊 Reportes Avanzados</h1>
           <p className="page-sub">Análisis de rentabilidad, tendencias y desempeño</p>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('rentabilidad')}>
             🖨️ Rentabilidad PDF
           </button>
           <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('rentabilidad')}>
-            📥 Excel
+            📥 Rentabilidad Excel
           </button>
           <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('top10-mes')}>
             🖨️ Top 10 PDF
           </button>
           <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('top10')}>
-            📥 Excel
+            📥 Top 10 Excel
           </button>
           <button className="btn btn-ghost btn-sm" onClick={() => abrirReporte('comparativo')}>
             🖨️ Comparativo PDF
           </button>
           <button className="btn btn-ghost btn-sm" disabled={btnExcelDisabled} onClick={() => exportarExcel('comparativo')}>
-            📥 Excel
+            📥 Comparativo Excel
           </button>
         </div>
       </div>

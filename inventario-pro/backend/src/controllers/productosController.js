@@ -1,4 +1,5 @@
 const { pool } = require('../config/database');
+const { registrar } = require('./auditoriaController');
 
 exports.getAll = async (req, res) => {
   try {
@@ -101,6 +102,10 @@ exports.update = async (req, res) => {
            VALUES (?,?,?,?,?,?)`,
           [id, actual.precio_compra, actual.precio_venta, precio_compra, precio_venta, req.user?.id || null]
         );
+        // V7: Auditoría de cambio de precio
+        await registrar(pool, req.user, 'cambiar_precio', 'productos', id,
+          `Precio compra: ${actual.precio_compra} → ${precio_compra} | Precio venta: ${actual.precio_venta} → ${precio_venta}`,
+          req.ip);
       }
     }
     await pool.query(

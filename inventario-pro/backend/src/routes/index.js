@@ -16,7 +16,7 @@ const repAvCtrl = require('../controllers/reportesAvanzadosController');
 const descCtrl  = require('../controllers/descuentosController');
 const cajaCtrl  = require('../controllers/cajaController');
 const etiCtrl   = require('../controllers/etiquetasController');
-
+const auditoriaCtrl = require('../controllers/auditoriaController');
 router.post('/auth/login',  authCtrl.login);
 router.post('/auth/logout', auth, authCtrl.logout);
 router.get('/auth/me',      auth, authCtrl.me);
@@ -78,6 +78,9 @@ router.put('/usuarios/:id',    auth, requireRole('admin'), usrCtrl.update);
 router.delete('/usuarios/:id', auth, requireRole('admin'), usrCtrl.remove);
 
 router.get('/accesos', auth, requireRole('admin'), usrCtrl.getAccesos);
+
+router.get('/auditoria', auth, requireRole('admin'), auditoriaCtrl.getAll);
+router.get('/auditoria/stats', auth, requireRole('admin'), auditoriaCtrl.getStats);
 
 // ── V5: Sucursales ────────────────────────────────────────────
 router.get('/sucursales',                auth, sucCtrl.getAll);

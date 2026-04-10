@@ -1,7 +1,7 @@
 {
   "name": "inventario-pro-backend",
-  "version": "6.0.0",
-  "description": "API REST para Inventario Pro V6",
+  "version": "7.0.0",
+  "description": "API REST para Inventario Pro V7",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

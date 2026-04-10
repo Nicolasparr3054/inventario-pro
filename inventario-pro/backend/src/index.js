@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-//  index.js  ·  Servidor Express — Inventario Pro V6
+//  index.js  ·  Servidor Express — Inventario Pro V7
 // ══════════════════════════════════════════════════════════════
 require('dotenv').config();
 const express = require('express');
@@ -15,7 +15,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api', routes);
 
-app.get('/', (req, res) => res.json({ status: 'ok', version: '6.0.0' }));
+app.get('/', (req, res) => res.json({ status: 'ok', version: '7.0.0' }));
 
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);

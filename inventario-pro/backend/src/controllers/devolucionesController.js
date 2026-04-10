@@ -134,6 +134,22 @@ exports.create = async (req, res) => {
     // Marcar la venta como con devolución
     await conn.query('UPDATE ventas SET tiene_devolucion=1 WHERE id=?', [venta_id]);
 
+    // Auto-registrar movimiento de devolución en caja si hay turno activo
+    try {
+      const [[turnoActivo]] = await conn.query(
+        `SELECT id FROM turnos_caja WHERE usuario_id=? AND estado='abierto' ORDER BY creado_en DESC LIMIT 1`,
+        [req.user?.id || null]
+      );
+      if (turnoActivo) {
+        await conn.query(
+          `INSERT INTO movimientos_caja (turno_id, tipo, monto, descripcion) VALUES (?,?,?,?)`,
+          [turnoActivo.id, 'devolucion', totalDevuelto, `Devolución ${numero} - Venta ${venta.numero_venta}`]
+        );
+      }
+    } catch (cajaErr) {
+      console.error('[Caja] Error al registrar devolución:', cajaErr.message);
+    }
+
     // Crear notificación
     await conn.query(
       `INSERT INTO notificaciones (tipo, titulo, mensaje, referencia_id, referencia_tipo)

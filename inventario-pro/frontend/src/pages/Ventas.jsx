@@ -58,7 +58,7 @@ export default function Ventas() {
     }
   };
 
-  // V4: Compartir recibo por WhatsApp
+  // V4+V7: Compartir recibo por WhatsApp (con link de factura)
   const compartirWhatsApp = async (venta) => {
     try {
       const { data } = await api.get(`/ventas/${venta.id}/recibo`);
@@ -67,6 +67,7 @@ export default function Ventas() {
         `  • ${d.producto_nombre} x${d.cantidad} = ${fmt(d.subtotal)}`
       ).join('\n');
 
+      const token = localStorage.getItem('token');
       const mensaje = [
         `🧾 *Recibo de compra - ${data.empresa || 'Inventario Pro'}*`,
         ``,
@@ -80,6 +81,9 @@ export default function Ventas() {
         `Subtotal: ${fmt(data.subtotal)}`,
         data.descuento > 0 ? `Descuento: -${fmt(data.descuento)}` : null,
         `*TOTAL: ${fmt(data.total)}*`,
+        ``,
+        `📄 *Ver factura en línea:*`,
+        `${window.location.origin}/api/ventas/${venta.id}/factura?token=${token}`,
         ``,
         `¡Gracias por su compra! 🙏`,
       ].filter(l => l !== null).join('\n');

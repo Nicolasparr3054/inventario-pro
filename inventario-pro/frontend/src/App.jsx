@@ -23,6 +23,8 @@ import ReportesAvanzados from './pages/ReportesAvanzados';
 import Descuentos       from './pages/Descuentos';
 import Caja             from './pages/Caja';
 import Etiquetas        from './pages/Etiquetas';
+// V7
+import Auditoria        from './pages/Auditoria';
 
 function PrivateRoute({ children, roles }) {
   const { user, loading } = useAuth();
@@ -92,6 +94,11 @@ function AppRoutes() {
 
       <Route path="/etiquetas" element={
         <PrivateRoute roles={['admin','almacenista']}><Etiquetas /></PrivateRoute>
+      }/>
+
+      {/* ── V7 ─────────────────────────────── */}
+      <Route path="/auditoria" element={
+        <PrivateRoute roles={['admin']}><Auditoria /></PrivateRoute>
       }/>
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

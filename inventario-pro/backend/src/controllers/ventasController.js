@@ -73,6 +73,23 @@ exports.create = async (req, res) => {
         [venta_id, item.producto_id, item.cantidad, item.precio_unit, item.precio_unit*item.cantidad]
       );
     }
+    // Auto-registrar movimiento en caja si hay turno activo
+    try {
+      const [[turnoActivo]] = await conn.query(
+        `SELECT id FROM turnos_caja WHERE usuario_id=? AND estado='abierto' ORDER BY creado_en DESC LIMIT 1`,
+        [req.user?.id || null]
+      );
+      if (turnoActivo) {
+        await conn.query(
+          `INSERT INTO movimientos_caja (turno_id, tipo, monto, descripcion) VALUES (?,?,?,?)`,
+          [turnoActivo.id, 'venta', total, `Venta ${numero}`]
+        );
+      }
+    } catch (cajaErr) {
+      // No interrumpir la venta si falla el registro de caja
+      console.error('[Caja] Error al registrar movimiento:', cajaErr.message);
+    }
+
     await conn.commit();
     res.status(201).json({ id: venta_id, numero_venta: numero, total, message: 'Venta registrada' });
   } catch (err) {
